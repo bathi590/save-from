@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>YT Saver - Download YouTube Videos</title>
+  <style>
+    /* ===== SAME STYLES AS BEFORE + ADDITIONS ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    header { text-align: center; padding: 30px 20px; max-width: 800px; width: 100%; }
+    .logo {
+      font-size: 2.2rem; font-weight: 700; margin-bottom: 10px;
+      background: linear-gradient(90deg, #e94560, #ff6b6b);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .tagline { font-size: 1.1rem; color: #ccc; margin-bottom: 25px; }
+    .container {
+      background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(10px);
+      border-radius: 20px; padding: 35px 30px; max-width: 650px; width: 100%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .input-group { display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; }
+    .url-input {
+      width: 100%; padding: 16px 20px; border: 2px solid rgba(233, 69, 96, 0.4);
+      border-radius: 12px; background: rgba(255, 255, 255, 0.1); color: #fff;
+      font-size: 1rem; outline: none; transition: all 0.3s ease;
+    }
+    .url-input::placeholder { color: #aaa; }
+    .url-input:focus { border-color: #e94560; box-shadow: 0 0 0 4px rgba(233, 69, 96, 0.2); }
+    .options { display: flex; gap: 12px; flex-wrap: wrap; }
+    .format-select, .quality-select {
+      flex: 1; min-width: 140px; padding: 12px 15px;
+      border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px;
+      background: rgba(255, 255, 255, 0.1); color: #fff; font-size: 0.95rem;
+      outline: none; cursor: pointer;
+    }
+    .format-select option, .quality-select option { background: #1a1a2e; color: #fff; }
+    .download-btn {
+      width: 100%; padding: 16px; background: linear-gradient(90deg, #e94560, #ff6b6b);
+      color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 600;
+      cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .download-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(233, 69, 96, 0.5); }
+    .download-btn:disabled { background: #666; cursor: not-allowed; transform: none; }
+    .features {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px; margin-top: 30px; padding-top: 25px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .feature { text-align: center; padding: 12px; }
+    .feature-icon { font-size: 1.8rem; margin-bottom: 8px; color: #ff6b6b; }
+    .feature-text { font-size: 0.9rem; color: #ccc; }
+    .status-msg {
+      margin-top: 15px; padding: 12px; border-radius: 10px; text-align: center;
+      display: none; font-size: 0.95rem;
+    }
+    .status-msg.success { background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; display: block; }
+    .status-msg.error { background: rgba(231, 76, 60, 0.2); border: 1px solid #e74c3c; display: block; }
+    .status-msg.processing { background: rgba(52, 152, 219, 0.2); border: 1px solid #3498db; display: block; }
+    .video-preview {
+      margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.2);
+      border-radius: 12px; display: none;
+    }
+    .video-preview.show { display: block; }
+    .video-preview img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; }
+    .video-title { margin: 10px 0 5px; font-weight: 600; }
+    .video-meta { font-size: 0.9rem; color: #aaa; }
+    footer {
+      text-align: center; padding: 25px 20px; color: #888; font-size: 0.9rem; max-width: 600px;
+    }
+    footer a { color: #ff6b6b; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    @media (max-width: 500px) {
+      .logo { font-size: 1.8rem; } .tagline { font-size: 1rem; }
+      .container { padding: 25px 20px; } .options { flex-direction: column; }
+      .download-btn { padding: 14px; }
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .processing { animation: pulse 1.5s infinite; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">🎬 YT Saver</div>
+    <p class="tagline">Download YouTube videos in MP4, MP3 & more — fast, free, and easy</p>
+  </header>
+
+  <main class="container">
+    <div class="input-group">
+      <input type="url" class="url-input" id="videoUrl" placeholder="Paste YouTube video URL here..." autocomplete="off"/>
+      
+      <div class="options">
+        <select class="format-select" id="format">
+          <option value="mp4">MP4 (Video)</option>
+          <option value="mp3">MP3 (Audio)</option>
+        </select>
+        <select class="quality-select" id="quality">
+          <option value="1080">1080p HD</option>
+          <option value="720" selected>720p HD</option>
+          <option value="480">480p</option>
+          <option value="360">360p</option>
+        </select>
+      </div>
+
+      <button class="download-btn" id="downloadBtn" onclick="handleDownload()">
+        <span>⬇️</span> Download Now
+      </button>
+      
+      <div id="status" class="status-msg"></div>
+      
+      <div id="preview" class="video-preview">
+        <img id="thumb" src="" alt="Thumbnail">
+        <div id="vidTitle" class="video-title"></div>
+        <div id="vidMeta" class="video-meta"></div>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feature"><div class="feature-icon">⚡</div><div class="feature-text">Fast Processing</div></div>
+      <div class="feature"><div class="feature-icon">🔒</div><div class="feature-text">Secure & Private</div></div>
+      <div class="feature"><div class="feature-icon">📱</div><div class="feature-text">Mobile Friendly</div></div>
+      <div class="feature"><div class="feature-icon">🆓</div><div class="feature-text">100% Free</div></div>
+    </div>
+  </main>
+
+  <footer>
+    <p>⚠️ Please respect copyright laws. Only download content you have rights to use.</p>
+    <p style="margin-top:8px">© 2026 YT Saver • <a href="#">Privacy</a> • <a href="#">Terms</a></p>
+  </footer>
+
+  <script>
+    // ⚙️ CONFIGURE YOUR BACKEND URL HERE
+    const API_BASE = 'http://localhost:5000/api'; // Change for production
+    
+    function showStatus(msg, type) {
+      const el = document.getElementById('status');
+      el.className = `status-msg ${type}`;
+      el.textContent = msg;
+    }
+    
+    async function fetchVideoInfo(url) {
+      try {
+        const res = await fetch(`${API_BASE}/info`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({url})
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to fetch info');
+        return data;
+      } catch (e) {
+        throw e;
+      }
+    }
+    
+    async function requestDownload(url, format, quality) {
+      const res = await fetch(`${API_BASE}/download`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({url, format, quality})
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Download failed');
+      return data;
+    }
+    
+    function showPreview(info) {
+      document.getElementById('thumb').src = info.thumbnail || '';
+      document.getElementById('vidTitle').textContent = info.title || 'Unknown';
+      document.getElementById('vidMeta').textContent = 
+        `${info.uploader || 'Unknown'} • ${Math.floor(info.duration/60)}:${String(info.duration%60).padStart(2,'0')}`;
+      document.getElementById('preview').classList.add('show');
+    }
+    
+    async function handleDownload() {
+      const url = document.getElementById('videoUrl').value.trim();
+      const format = document.getElementById('format').value;
+      const quality = document.getElementById('quality').value;
+      const btn = document.getElementById('downloadBtn');
+      
+      if (!url || (!url.includes('youtube.com') && !url.includes('youtu.be'))) {
+        showStatus('❌ Please enter a valid YouTube URL', 'error');
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.classList.add('processing');
+      btn.innerHTML = '<span>⏳</span> Processing...';
+      showStatus('🔍 Fetching video info...', 'processing');
+      document.getElementById('preview').classList.remove('show');
+      
+      try {
+        // Step 1: Get video info
+        const info = await fetchVideoInfo(url);
+        showPreview(info);
+        showStatus(`✅ Found: ${info.title}`, 'success');
+        
+        // Step 2: Request download
+        showStatus('⬇️ Starting download...', 'processing');
+        const result = await requestDownload(url, format, quality);
+        
+        // Step 3: Trigger file download
+        showStatus('🎉 Preparing file...', 'success');
+        window.location.href = `${API_BASE}${result.download_url}`;
+        
+        setTimeout(() => {
+          showStatus('✅ Download started! Check your downloads folder.', 'success');
+          btn.disabled = false;
+          btn.classList.remove('processing');
+          btn.innerHTML = '<span>⬇️</span> Download Now';
+        }, 2000);
+        
+      } catch (err) {
+        console.error(err);
+        showStatus(`❌ Error: ${err.message}`, 'error');
+        btn.disabled = false;s
+        btn.classList.remove('processing');
+        btn.innerHTML = '<span>⬇️</span> Download Now';
+      }
+    }
+    
+    // Enter key support
+    document.getElementById('videoUrl').addEventListener('keypress', e => {
+      if (e.key === 'Enter') handleDownload();
+    });
+  </script>
+</body>
+</html>
